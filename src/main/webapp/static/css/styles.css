@@ -1,0 +1,87 @@
+body{    
+    background-image: url("/uhoogma/static/img/cork-wallet.png");
+}
+
+.wrapper {
+    width: 960px;
+    margin: 0 auto; 
+}
+
+.header {
+   width: 815px;
+   padding: 10px; 
+}
+
+.inputStyle {
+    padding: 10px;
+    border: solid 1px #fff;
+    box-shadow: inset 1px 1px 2px 0 #707070;
+    transition: box-shadow 0.3s;
+}
+
+.inputStyle:focus {
+    box-shadow: inset 1px 1px 2px 0 #c9c9c9;
+}
+
+.content {
+    padding: 15px;
+    float: left; 
+    width: 600px;   
+}
+
+table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 550px;
+}
+
+td, th {
+    border: 1px solid #cccccc;
+    text-align: left;
+    padding: 8px!important;
+}
+
+tr:nth-child(even) {
+    background-color: #dddddd;
+}
+
+tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+.center {
+    width: 500px;
+    margin: 0 auto;
+}
+
+.sidebar {
+    width: 24%;
+    margin-top: 15px;
+    float: left; 
+}
+
+input{
+    width: 80%;
+}
+
+.button {
+    background-color: #ff9900;
+    border: none;
+    color: black;
+    padding: 10px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    cursor: pointer;
+    height: 42px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    float: right;
+    width: 20%;
+}
+
+select {
+    width: 90%;
+    height: 34px;
+}
