@@ -1,5 +1,5 @@
 body{    
-    background-image: url("/uhoogma/static/img/cork-wallet.png");
+    background-image: url("/amazonsearch/static/img/cork-wallet.png");
 }
 
 .wrapper {
@@ -84,4 +84,7 @@ input{
 select {
     width: 90%;
     height: 34px;
+}
+.form-control{
+	width: 206px!important;
 }

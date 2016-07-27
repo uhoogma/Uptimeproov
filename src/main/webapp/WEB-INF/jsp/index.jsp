@@ -22,36 +22,6 @@
 					<th>Currency</th>
 				</tr>
 				<tbody id="myTableBody">
-					<tr>
-						<td><a href="http://www.google.ee" target="_blank">nimetus</a></td>
-						<td>21,00</td>
-						<td>USD</td>
-					</tr>
-					<tr>
-						<td>Centro comercial Moctezuma</td>
-						<td>Francisco Chang</td>
-						<td>Mexico</td>
-					</tr>
-					<tr>
-						<td>Ernst Handel</td>
-						<td>Roland Mendel</td>
-						<td>Austria</td>
-					</tr>
-					<tr>
-						<td>Island Trading</td>
-						<td>Helen Bennett</td>
-						<td>UK</td>
-					</tr>
-					<tr>
-						<td>Laughing Bacchus Winecellars</td>
-						<td>Yoshi Tannamuri</td>
-						<td>Canada</td>
-					</tr>
-					<tr>
-						<td>Magazzini Alimentari Riuniti</td>
-						<td>Giovanni Rovelli</td>
-						<td>Italy</td>
-					</tr>
 				</tbody>
 			</table>
 			<div class="center">
@@ -65,21 +35,14 @@
 					<li><a class="pagination pagination-sm"
 						href="javascript:nextPage()" id="btn_next">Next</a></li>
 				</ul>
-				<!--ul id="pagination-demo" class="pagination pagination-sm"></ul-->
 			</div>
 		</div>
 		<div class="sidebar">
-			<select>
-				<option value="volvo">Volvo</option>
-				<option value="saab">Saab</option>
-				<option value="mercedes">Mercedes</option>
-				<option value="audi">Audi</option>
+			<select class="form-control" id="currencyDropDown">
 			</select>
 		</div>
 	</div>
 	<script type="text/javascript" src="static/js/jquery.min.js"></script>
-	<!--script type="text/javascript"
-		src="static/js/jquery.twbsPagination.min.js"></script-->
 	<script type="text/javascript" src="static/js/functions.js"></script>
 </body>
 </html>

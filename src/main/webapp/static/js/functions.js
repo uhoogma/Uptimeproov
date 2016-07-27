@@ -10,10 +10,10 @@ $(document).ready(function() {
 		pageNumber = "1";
 	}
 	changePage(pageNumber);
+	setCurrencyDropDown("GBP");
 });
 
-// http://stackoverflow.com/a/25435422
-
+// based on http://stackoverflow.com/a/25435422
 function changePage(page, preloaded) {
 	var btn_next = document.getElementById("btn_next");
 	var btn_prev = document.getElementById("btn_prev");
@@ -23,7 +23,7 @@ function changePage(page, preloaded) {
 		page = 1;
 	if (page > numPages())
 		page = numPages();
-	
+
 	if (preloaded) {
 		showPreloadedPage(page);
 	} else {
@@ -93,13 +93,13 @@ function showPreloadedPage(page) {
 		}
 		$('#myTableBody').val("");
 		$('#myTableBody').html(content);
-		var nextPage = parseInt(page)+1;
+		var nextPage = parseInt(page) + 1;
 		$.ajax({
 			url : 'tabledata/next/' + nextPage,
-			success: function(data) {
+			success : function(data) {
 				newList = newList.concat(data.itemList);
 				localStorage.setItem('preloaded', JSON.stringify(newList));
-            }
+			}
 		});
 	});
 };
@@ -116,4 +116,20 @@ function nextPage() {
 		current_page++;
 		changePage(current_page, true);
 	}
+}
+
+function setCurrencyDropDown(current) {
+	$.ajax({
+		type : "GET",
+		url : "tabledata/currency/" + current,
+		success : function(data) {
+			var selectEl = $('#currencyDropDown');
+			selectEl.children().remove();
+			for ( var key in data) {
+				var optionEl = $('<option/>').attr('value', data[key])
+						.text(key);
+				selectEl.append(optionEl);
+			}
+		}
+	});
 }
