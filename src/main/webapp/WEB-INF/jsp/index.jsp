@@ -18,6 +18,8 @@
 			<table>
 				<tr>
 					<th>Product</th>
+					<th style="display:none;"></th>
+					<th style="display:none;"></th>
 					<th>Price</th>
 					<th>Currency</th>
 				</tr>

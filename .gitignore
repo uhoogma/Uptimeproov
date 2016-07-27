@@ -1,6 +1,8 @@
 # Target Directory #
 target/**
 
+src/main/java/com/example/conf/application.properties
+
 # Package Files #
 *.jar
 *.war

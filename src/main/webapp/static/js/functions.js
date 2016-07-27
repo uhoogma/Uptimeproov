@@ -29,6 +29,7 @@ function changePage(page, preloaded) {
 	} else {
 		fillTable(page);
 	}
+
 	page_span.innerHTML = page + "/" + numPages();
 
 	if (page == 1) {
@@ -49,27 +50,39 @@ function numPages() {
 }
 
 function fillTable(pageNumber) {
-	$.get('tabledata/' + pageNumber, function(data) {
-		localStorage.count = data.itemCount;
-		localStorage.setItem('preloaded', JSON.stringify(data.itemList));
-		var list = data.itemList;
-		$(function() {
-			var content = '';
-			var end = records_per_page;
-			if (end > list.length) {
-				end = list.length;
-			}
-			for (var i = 0; i < end; i++) {
-				content += '<tr id="' + list[i].isan + '">';
-				content += '<td>' + list[i].title + '</td>';
-				content += '<td>' + list[i].price + '</td>';
-				content += '<td>' + list[i].currency + '</td>';
-				content += '</tr>';
-			}
-			$('#myTableBody').val("");
-			$('#myTableBody').html(content);
-		});
-	});
+	$
+			.ajax({
+				type : "GET",
+				url : 'tabledata/' + pageNumber,
+				success : function(data) {
+					localStorage.count = data.itemCount;
+					localStorage.setItem('preloaded', JSON
+							.stringify(data.itemList));
+					var list = data.itemList;
+					$(function() {
+						var content = '';
+						var end = records_per_page;
+						if (end > list.length) {
+							end = list.length;
+						}
+						for (var i = 0; i < end; i++) {
+							content += '<tr id="' + i + '">';
+							content += '<td>' + list[i].title + '</td>';
+							content += '<td style="display:none;" class="priceHidden">'
+									+ (list[i].price).toFixed(2) + '</td>';
+							content += '<td style="display:none;" class="currencyHidden">'
+									+ list[i].currency + '</td>';
+							content += '<td class="price">'
+									+ (list[i].price).toFixed(2) + '</td>';
+							content += '<td class="currency">'
+									+ list[i].currency + '</td>';
+							content += '</tr>';
+						}
+						$('#myTableBody').val("");
+						$('#myTableBody').html(content);
+					});
+				}
+			});
 };
 
 function showPreloadedPage(page) {
@@ -85,10 +98,15 @@ function showPreloadedPage(page) {
 		var newList = new Array();
 		for (var i = records_per_page; i < end; i++) {
 			newList.push(list[i]);
-			content += '<tr id="' + list[i].isan + '">';
+			content += '<tr id="' + i + '">';
 			content += '<td>' + list[i].title + '</td>';
-			content += '<td>' + list[i].price + '</td>';
-			content += '<td>' + list[i].currency + '</td>';
+			content += '<td style="display:none;" class="priceHidden">'
+					+ (list[i].price).toFixed(2) + '</td>';
+			content += '<td style="display:none;" class="currencyHidden">'
+					+ list[i].currency + '</td>';
+			content += '<td class="price">' + (list[i].price).toFixed(2)
+					+ '</td>';
+			content += '<td class="currency">' + list[i].currency + '</td>';
 			content += '</tr>';
 		}
 		$('#myTableBody').val("");
@@ -119,17 +137,44 @@ function nextPage() {
 }
 
 function setCurrencyDropDown(current) {
-	$.ajax({
-		type : "GET",
-		url : "tabledata/currency/" + current,
-		success : function(data) {
-			var selectEl = $('#currencyDropDown');
-			selectEl.children().remove();
-			for ( var key in data) {
-				var optionEl = $('<option/>').attr('value', data[key])
-						.text(key);
-				selectEl.append(optionEl);
-			}
-		}
+	$
+			.ajax({
+				type : "GET",
+				url : "tabledata/currency/" + current,
+				success : function(data) {
+					var selectEl = $('#currencyDropDown');
+					selectEl.children().remove();
+					var emptyEl;
+					emptyEl = $('<option/>').attr('value', data[current]).text(
+							current);
+					selectEl.append(emptyEl);
+					for ( var key in data) {
+						var optionEl = $('<option/>').attr('value', data[key])
+								.text(key);
+						selectEl.append(optionEl);
+					}
+				}
+			});
+}
+
+$('#currencyDropDown').change(function() {
+	var rate = this.value;
+	var currency = $('#currencyDropDown option:selected').text();
+	changePrice(rate);
+	changeCurrency(currency);
+});
+
+function changePrice(rate) {
+	$('tr:not(:has(th))').each(function(i, row) {
+		var $actualrow = $(row);
+		var actualPrice = $actualrow.children(".priceHidden").first().text();
+		var newPrice = (actualPrice * rate).toFixed(2);
+		$actualrow.children(".price").first().text(newPrice);
+	});
+}
+
+function changeCurrency(currency) {
+	$('td.currency').each(function() {
+		this.innerHTML = currency;
 	});
 }
