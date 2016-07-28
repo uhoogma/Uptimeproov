@@ -4,17 +4,21 @@ var current_page = 1;
 var records_per_page = 13;
 
 $(document).ready(function() {
-	var url = window.location.href;
-	var pageNumber = url.substr(url.lastIndexOf("/") + 1);
-	if (pageNumber === "") {
-		pageNumber = "1";
-	}
-	changePage(pageNumber);
-	setCurrencyDropDown("GBP");
+	$("#searchForm").submit(function(event) {
+		event.preventDefault();
+		var searchTerm = $(this).find("input[name='s']").val();
+		var pageNumber = url.substr(url.lastIndexOf("/") + 1);
+		if (pageNumber === "") {
+			pageNumber = "1";
+		}
+		localStorage.searchTerm = searchTerm;
+		changePage(pageNumber, searchTerm, false);
+		setCurrencyDropDown("GBP");
+	});
 });
 
 // based on http://stackoverflow.com/a/25435422
-function changePage(page, preloaded) {
+function changePage(page, keyWords, preloaded) {
 	var btn_next = document.getElementById("btn_next");
 	var btn_prev = document.getElementById("btn_prev");
 	var page_span = document.getElementById("page");
@@ -27,7 +31,7 @@ function changePage(page, preloaded) {
 	if (preloaded) {
 		showPreloadedPage(page);
 	} else {
-		fillTable(page);
+		fillTable(page, keyWords);
 	}
 
 	page_span.innerHTML = page + "/" + numPages();
@@ -49,11 +53,12 @@ function numPages() {
 	return parseInt(localStorage.count / records_per_page + 1);
 }
 
-function fillTable(pageNumber) {
+function fillTable(pageNumber, keyWords) {
+
 	$
 			.ajax({
-				type : "GET",
-				url : 'tabledata/' + pageNumber,
+				type : "POST",
+				url : 'tabledata/' + pageNumber + "/" + keyWords,
 				success : function(data) {
 					localStorage.count = data.itemCount;
 					localStorage.setItem('preloaded', JSON
@@ -69,11 +74,13 @@ function fillTable(pageNumber) {
 							content += '<tr id="' + i + '">';
 							content += '<td>' + list[i].title + '</td>';
 							content += '<td style="display:none;" class="priceHidden">'
-									+ (list[i].price).toFixed(2) + '</td>';
+									+ (list[i].price / 100).toFixed(2)
+									+ '</td>';
 							content += '<td style="display:none;" class="currencyHidden">'
 									+ list[i].currency + '</td>';
 							content += '<td class="price">'
-									+ (list[i].price).toFixed(2) + '</td>';
+									+ (list[i].price / 100).toFixed(2)
+									+ '</td>';
 							content += '<td class="currency">'
 									+ list[i].currency + '</td>';
 							content += '</tr>';
@@ -101,10 +108,10 @@ function showPreloadedPage(page) {
 			content += '<tr id="' + i + '">';
 			content += '<td>' + list[i].title + '</td>';
 			content += '<td style="display:none;" class="priceHidden">'
-					+ (list[i].price).toFixed(2) + '</td>';
+					+ (list[i].price / 100).toFixed(2) + '</td>';
 			content += '<td style="display:none;" class="currencyHidden">'
 					+ list[i].currency + '</td>';
-			content += '<td class="price">' + (list[i].price).toFixed(2)
+			content += '<td class="price">' + (list[i].price / 100).toFixed(2)
 					+ '</td>';
 			content += '<td class="currency">' + list[i].currency + '</td>';
 			content += '</tr>';
@@ -112,8 +119,10 @@ function showPreloadedPage(page) {
 		$('#myTableBody').val("");
 		$('#myTableBody').html(content);
 		var nextPage = parseInt(page) + 1;
+		var searchTerm = localStorage.getItem('searchTerm');
 		$.ajax({
-			url : 'tabledata/next/' + nextPage,
+			type : "POST",
+			url : "tabledata/next/" + nextPage + "/" + searchTerm,
 			success : function(data) {
 				newList = newList.concat(data.itemList);
 				localStorage.setItem('preloaded', JSON.stringify(newList));
@@ -125,14 +134,16 @@ function showPreloadedPage(page) {
 function prevPage() {
 	if (current_page > 1) {
 		current_page--;
-		changePage(current_page, false);
+		var searchTerm = localStorage.getItem('searchTerm');
+		changePage(current_page, searchTerm, false);
 	}
 }
 
 function nextPage() {
 	if (current_page < numPages()) {
 		current_page++;
-		changePage(current_page, true);
+		var searchTerm = localStorage.getItem('searchTerm');
+		changePage(current_page, searchTerm, true);
 	}
 }
 

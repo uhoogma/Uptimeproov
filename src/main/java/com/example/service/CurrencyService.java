@@ -64,7 +64,9 @@ public class CurrencyService {
 					bufferedReader.close();
 				}
 			}
-			in.close();
+			if (in != null) {
+				in.close();	
+			}
 		} catch (Exception e) {
 			throw new RuntimeException("Exception while calling URL:" + myURL, e);
 		}

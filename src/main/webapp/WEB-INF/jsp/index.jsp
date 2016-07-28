@@ -11,15 +11,17 @@
 	<div class="wrapper">
 		<div class="header">
 			<h2>Amazon search</h2>
-			<input class="inputStyle" type="text" name="search" /> <a href="#"
-				class="button">Search</a>
+			<form action="/" id="searchForm">
+				<input class="inputStyle" type="text" name="s" /><input
+					class="button" type="submit" value="Search">
+			</form>
 		</div>
 		<div class="content">
 			<table>
 				<tr>
 					<th>Product</th>
-					<th style="display:none;"></th>
-					<th style="display:none;"></th>
+					<th style="display: none;"></th>
+					<th style="display: none;"></th>
 					<th>Price</th>
 					<th>Currency</th>
 				</tr>
