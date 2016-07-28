@@ -40,202 +40,233 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
+/**
+ * Based on Amazon's sample code (see copyright above)
+ */
 public class ProductService {
 
-	private static PropertyLoader propertyLoader = new PropertyLoader();
-	private static final String AWS_ACCESS_KEY_ID = propertyLoader.getAwsAccessKeyId();
-	private static final String AWS_SECRET_KEY = propertyLoader.getAwsSecretKey();
-	private static final String AWS_ASSOCIATE_TAG = propertyLoader.getAwsAssociateTag();
-	private static final int PAGINATION_LIMIT = 5;
-	private static final String ENDPOINT = "ecs.amazonaws.co.uk";
+    private static PropertyLoader propertyLoader = new PropertyLoader();
+    private static final String AWS_ACCESS_KEY_ID = propertyLoader.getAwsAccessKeyId();
+    private static final String AWS_SECRET_KEY = propertyLoader.getAwsSecretKey();
+    private static final String AWS_ASSOCIATE_TAG = propertyLoader.getAwsAssociateTag();
+    /**
+     * Maximum page count if parameter "SearchIndex" is set to "All"
+     */
+    private static final int PAGINATION_LIMIT = 5;
+    private static final String ENDPOINT = "ecs.amazonaws.co.uk";
 
-	public Data fetchProducts(int start, int count, String keywords) {
-		SignedRequestsHelper helper;
-		try {
-			helper = SignedRequestsHelper.getInstance(ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_KEY, AWS_ASSOCIATE_TAG);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return new Data();
-		}
+    /**
+     * Since I need to fetch 13 or 26 products and I can load only 10 products
+     * at the time, I must calculate ranges and perform several queries
+     */
+    public Data fetchProducts(int start, int count, String keywords) {
+        SignedRequestsHelper helper;
+        try {
+            helper = SignedRequestsHelper.getInstance(ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_KEY, AWS_ASSOCIATE_TAG);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new Data();
+        }
 
-		int startPage = (start / 10) + 1;
-		int lastPage = ((start + count) / 10) + 1;
+        int startPage = (start / 10) + 1;
+        int lastPage = ((start + count) / 10) + 1;
 
-		List<Item> itemsToReturn = new ArrayList<>();
-		int itemCount = 0;
-		for (int itemPage = startPage; itemPage <= lastPage; itemPage++) {
-			if (itemPage <= PAGINATION_LIMIT) {
-				mandatoryWait();
-				int init = (itemPage == startPage) ? start - ((startPage - 1) * 10) : 0;
-				int last = (itemPage == lastPage) ? start + count - ((lastPage - 1) * 10) : 10;
-				Range range = new Range(init, last);
-				Data data = fetch(helper, itemPage, range, keywords);
-				List<Item> items = data.getItemList();
-				itemCount = data.getItemCount();
-				itemsToReturn.addAll(items);
-			}
-		}
-		return new Data(itemCount, itemsToReturn);
-	}
+        List<Item> itemsToReturn = new ArrayList<>();
+        int itemCount = 0;
+        for (int itemPage = startPage; itemPage <= lastPage; itemPage++) {
+            if (itemPage <= PAGINATION_LIMIT) {
+                mandatoryWait();
+                int init = (itemPage == startPage) ? start - ((startPage - 1) * 10) : 0;
+                int last = (itemPage == lastPage) ? start + count - ((lastPage - 1) * 10) : 10;
+                Range range = new Range(init, last);
+                Data data = fetch(helper, itemPage, range, keywords);
+                List<Item> items = data.getItemList();
+                itemCount = data.getItemCount();
+                itemsToReturn.addAll(items);
+            }
+        }
+        return new Data(itemCount, itemsToReturn);
+    }
 
-	private Data fetch(SignedRequestsHelper helper, int itemPage, Range range, String keywords) {
-		String requestUrl;
+    /**
+     * Users can only make 1 query/second otherwise Amazon returns errorcode 503
+     */
+    private void mandatoryWait() {
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Fetching up to 10 items at the time
+     */
+    private Data fetch(SignedRequestsHelper helper, int itemPage, Range range, String keywords) {
+        String requestUrl;
 
-		Map<String, String> params = fillParameters(itemPage, keywords);
+        Map<String, String> params = fillParameters(itemPage, keywords);
 
-		requestUrl = helper.sign(params);
-		mandatoryWait();
+        requestUrl = helper.sign(params);
+        mandatoryWait();
 
-		Data fetched = fetchItems(requestUrl, range);
-		List<Item> items = fetched.getItemList();
-		int count = fetched.getItemCount();
+        Data fetched = fetchItems(requestUrl, range);
+        List<Item> items = fetched.getItemList();
+        int count = fetched.getItemCount();
 
-		fetchPrices(helper, items);
-		Data data = new Data(count, items);
-		return data;
-	}
+        fetchPrices(helper, items);
+        Data data = new Data(count, items);
+        return data;
+    }
 
-	private void fetchPrices(SignedRequestsHelper helper, List<Item> items) {
-		String requestUrlForPrices;
-		String itemList = "";
-		for (Item item : items) {
-			itemList = itemList + item.getAsin() + ",";
-		}
+    private Map<String, String> fillParameters(int itemPage, String keywords) {
+        Map<String, String> params = new HashMap<>();
+        params.put("Service", "AWSECommerceService");
+        params.put("Version", "2009-03-31");
+        params.put("Operation", "ItemSearch");
+        params.put("SearchIndex", "All");
+        params.put("Availability", "Available");
+        params.put("ItemPage", String.valueOf(itemPage));
+        params.put("Keywords", keywords);
+        params.put("ResponseGroup", "Small");
+        return params;
+    }
+    
+    /**
+     * Fetching item details
+     */
+    private Data fetchItems(String requestUrl, Range range) {
+        String title = null, asin = null, detailPageURL = null;
+        List<Item> items = new ArrayList<Item>();
+        String results;
+        try {
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(requestUrl);
+            results = doc.getElementsByTagName("TotalResults").item(0).getTextContent();
+            int itemCount = doc.getElementsByTagName("Item").getLength();
+            for (int i = range.getStart(); i < range.getEnd() && i < itemCount; i++) {
+                Item item = new Item();
+                Node itemNode = doc.getElementsByTagName("Item").item(i);
+                if (itemNode instanceof Element) {
+                    Element docElement = (Element) itemNode;
+                    asin = docElement.getElementsByTagName("ASIN").item(0).getTextContent();
+                    item.setAsin(asin);
+                    detailPageURL = docElement.getElementsByTagName("DetailPageURL").item(0).getTextContent();
+                    item.setDetailPageURL(detailPageURL);
+                }
+                if (itemNode instanceof Element) {
+                    Element docElement = (Element) itemNode;
+                    Node itemAttributes = docElement.getElementsByTagName("ItemAttributes").item(0);
+                    if (itemAttributes instanceof Element) {
+                        Element docElement2 = (Element) itemAttributes;
+                        title = docElement2.getElementsByTagName("Title").item(0).getTextContent();
+                        item.setTitle(title);
+                    }
+                }
+                if (asin != null && title != null && detailPageURL != null) {
+                    items.add(item);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return new Data(Integer.parseInt(results), items);
+    }
 
-		if (itemList.length() > 0) {
-			itemList = itemList.substring(0, itemList.length() - 1);
+    /**
+     * Preparing price query
+     */
+    private void fetchPrices(SignedRequestsHelper helper, List<Item> items) {
+        String requestUrlForPrices;
+        String itemList = "";
+        for (Item item : items) {
+            itemList = itemList + item.getAsin() + ",";
+        }
 
-			String queryStringForPrices = "Service=AWSECommerceService&Version=2009-03-31&Operation=ItemLookup&ResponseGroup=Offers&ItemId="
-					+ itemList;
-			requestUrlForPrices = helper.sign(queryStringForPrices);
-			mandatoryWait();
+        if (itemList.length() > 0) {
+            itemList = itemList.substring(0, itemList.length() - 1);
 
-			Map<String, Pair> map = fetchAmount(requestUrlForPrices);
-			for (Item item : items) {
-				Pair pair = map.get(item.getAsin());
-				if (pair != null) {
-					setPrice(item, pair);
-					setCurrency(item, pair);
-				}
-			}
-		}
-	}
+            String queryStringForPrices = "Service=AWSECommerceService&Version=2009-03-31&Operation=ItemLookup&ResponseGroup=Offers&ItemId="
+                    + itemList;
+            requestUrlForPrices = helper.sign(queryStringForPrices);
+            mandatoryWait();
 
-	private void setPrice(Item item, Pair pair) {
-		String price = pair.getAmount();
-		if (price.isEmpty()) {
-			item.setPrice(0);
-		} else {
-			item.setPrice(new Integer(price));
-		}
-	}
+            Map<String, Pair> map = fetchAmount(requestUrlForPrices);
+            for (Item item : items) {
+                Pair pair = map.get(item.getAsin());
+                if (pair != null) {
+                    setPrice(item, pair);
+                    setCurrency(item, pair);
+                }
+            }
+        }
+    }
 
-	private void setCurrency(Item item, Pair pair) {
-		String currency = pair.getCurrencyCode();
-		if (currency.isEmpty()) {
-			item.setCurrency("GBP");
-		} else {
-			item.setCurrency(currency);
-		}
-	}
+    /**
+     * Fetching price details
+     */
+    private Map<String, Pair> fetchAmount(String requestUrl) {
+        String price = "", asin = "", currency = "";
+        Map<String, Pair> map = new HashMap<String, Pair>();
+        try {
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(requestUrl);
+            for (int i = 0; i < doc.getElementsByTagName("Item").getLength(); i++) {
+                Pair pair = new Pair();
+                Node itemNode = doc.getElementsByTagName("Item").item(i);
+                if (itemNode instanceof Element) {
+                    Element level = (Element) itemNode;
+                    asin = level.getElementsByTagName("ASIN").item(0).getTextContent();
+                }
+                if (itemNode instanceof Element) {
+                    Element level = (Element) itemNode;
+                    Node offerSummary = level.getElementsByTagName("OfferSummary").item(0);
+                    if (offerSummary instanceof Element) {
+                        Element level2 = (Element) offerSummary;
+                        Node lowestNewPrice = level2.getElementsByTagName("LowestNewPrice").item(0);
+                        if (lowestNewPrice instanceof Element) {
+                            Element level3 = (Element) lowestNewPrice;
+                            price = level3.getElementsByTagName("Amount").item(0).getTextContent();
+                            currency = level3.getElementsByTagName("CurrencyCode").item(0).getTextContent();
+                            if (price != null && currency != null) {
+                                pair.setAmount(price);
+                                pair.setCurrencyCode(currency);
+                                map.put(asin, pair);
+                            }
+                        }
+                    }
+                }
 
-	private Map<String, String> fillParameters(int itemPage, String keywords) {
-		Map<String, String> params = new HashMap<>();
-		params.put("Service", "AWSECommerceService");
-		params.put("Version", "2009-03-31");
-		params.put("Operation", "ItemSearch");
-		params.put("SearchIndex", "All");
-		params.put("Availability", "Available");
-		params.put("ItemPage", String.valueOf(itemPage));
-		params.put("Keywords", keywords);
-		params.put("ResponseGroup", "Small");
-		return params;
-	}
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return map;
+    }
+    
+    /**
+     * Setting price, default is 0
+     */
+    private void setPrice(Item item, Pair pair) {
+        String price = pair.getAmount();
+        if (price.isEmpty()) {
+            item.setPrice(0);
+        } else {
+            item.setPrice(new Integer(price));
+        }
+    }
 
-	private Data fetchItems(String requestUrl, Range range) {
-		String title = null, asin = null, detailPageURL = null;
-		List<Item> items = new ArrayList<Item>();
-		String results;
-		try {
-			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-			DocumentBuilder db = dbf.newDocumentBuilder();
-			Document doc = db.parse(requestUrl);
-			results = doc.getElementsByTagName("TotalResults").item(0).getTextContent();
-			int itemCount = doc.getElementsByTagName("Item").getLength();
-			for (int i = range.getStart(); i < range.getEnd() && i < itemCount; i++) {
-				Item item = new Item();
-				Node itemNode = doc.getElementsByTagName("Item").item(i);
-				if (itemNode instanceof Element) {
-					Element docElement = (Element) itemNode;
-					asin = docElement.getElementsByTagName("ASIN").item(0).getTextContent();
-					item.setAsin(asin);
-					detailPageURL = docElement.getElementsByTagName("DetailPageURL").item(0).getTextContent();
-					item.setDetailPageURL(detailPageURL);
-				}
-				if (itemNode instanceof Element) {
-					Element docElement = (Element) itemNode;
-					Node itemAttributes = docElement.getElementsByTagName("ItemAttributes").item(0);
-					if (itemAttributes instanceof Element) {
-						Element docElement2 = (Element) itemAttributes;
-						title = docElement2.getElementsByTagName("Title").item(0).getTextContent();
-						item.setTitle(title);
-					}
-				}
-				if (asin != null && title != null && detailPageURL != null) {
-					items.add(item);
-				}
-			}
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-		return new Data(Integer.parseInt(results), items);
-	}
-
-	private Map<String, Pair> fetchAmount(String requestUrl) {
-		String price = "", asin = "", currency = "";
-		Map<String, Pair> map = new HashMap<String, Pair>();
-		try {
-			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-			DocumentBuilder db = dbf.newDocumentBuilder();
-			Document doc = db.parse(requestUrl);
-			for (int i = 0; i < doc.getElementsByTagName("Item").getLength(); i++) {
-				Pair pair = new Pair();
-				Node itemNode = doc.getElementsByTagName("Item").item(i);
-				if (itemNode instanceof Element) {
-					Element level = (Element) itemNode;
-					asin = level.getElementsByTagName("ASIN").item(0).getTextContent();
-				}
-				if (itemNode instanceof Element) {
-					Element level = (Element) itemNode;
-					Node offerSummary = level.getElementsByTagName("OfferSummary").item(0);
-					if (offerSummary instanceof Element) {
-						Element level2 = (Element) offerSummary;
-						Node lowestNewPrice = level2.getElementsByTagName("LowestNewPrice").item(0);
-						if (lowestNewPrice instanceof Element) {
-							Element level3 = (Element) lowestNewPrice;
-							price = level3.getElementsByTagName("Amount").item(0).getTextContent();
-							currency = level3.getElementsByTagName("CurrencyCode").item(0).getTextContent();
-							if (price != null && currency != null) {
-								pair.setAmount(price);
-								pair.setCurrencyCode(currency);
-								map.put(asin, pair);
-							}
-						}
-					}
-				}
-
-			}
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-		return map;
-	}
-
-	private void mandatoryWait() {
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-	}
+    /**
+     * Setting currency, default is "GBP"
+     */
+    private void setCurrency(Item item, Pair pair) {
+        String currency = pair.getCurrencyCode();
+        if (currency.isEmpty()) {
+            item.setCurrency("GBP");
+        } else {
+            item.setCurrency(currency);
+        }
+    }
 }

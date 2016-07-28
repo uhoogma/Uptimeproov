@@ -3,6 +3,9 @@ package com.example.model;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Wrapper class for data transfer
+ */
 public class Data {
 
 	private int itemCount;

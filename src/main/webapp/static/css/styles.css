@@ -50,11 +50,11 @@ tr:nth-child(odd) {
 }
 
 .price {
-	text-align: right;
+    text-align: right;
 }
 
 #notificationArea {
-	text-align: center;
+    text-align: center;
 }
 
 .center {
@@ -94,5 +94,5 @@ select {
     height: 34px;
 }
 .form-control{
-	width: 206px!important;
+    width: 206px!important;
 }

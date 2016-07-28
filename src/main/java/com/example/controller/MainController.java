@@ -6,6 +6,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 public class MainController {
 
+	/**
+	 * Just for initial loading
+	 */
 	@RequestMapping("/")
 	public String home() {
 		return "index";

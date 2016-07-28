@@ -15,25 +15,31 @@ import com.example.service.ProductService;
 @RequestMapping("tabledata")
 public class DataController {
 
-	private CurrencyService currencyService = new CurrencyService();	
+	private CurrencyService currencyService = new CurrencyService();
 	private ProductService productService = new ProductService();
 	private int recordsPerPage = 13;
-	
+
 	@RequestMapping(value = "/currency/{target}", method = RequestMethod.GET, produces = "application/json")
 	public Map<String, Double> getCurrencyConversion(@PathVariable String target) {
 		return currencyService.getCurrencies(target);
 	}
-	
+
+	/**
+	 * Get first 26 records
+	 */
 	@RequestMapping(value = "/{id}/{keywords}", method = RequestMethod.POST, produces = "application/json")
-	public Data getItemsInJSON(@PathVariable String id , @PathVariable String keywords) {
+	public Data getItemsInJSON(@PathVariable String id, @PathVariable String keywords) {
 		int start = (Integer.parseInt(id) - 1) * recordsPerPage;
-		int limit = start + 2* recordsPerPage;
+		int limit = start + 2 * recordsPerPage;
 		if (keywords != null) {
 			return productService.fetchProducts(start, limit, keywords);
 		}
 		return new Data();
 	}
 
+	/**
+	 * Get next 13 records
+	 */
 	@RequestMapping(value = "/next/{id}/{keywords}", method = RequestMethod.POST, produces = "application/json")
 	public Data getNextItems(@PathVariable String id, @PathVariable String keywords) {
 		int start = (Integer.parseInt(id) - 1) * recordsPerPage;

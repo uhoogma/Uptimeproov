@@ -18,7 +18,9 @@ $(document).ready(function() {
 	});
 });
 
-// based on http://stackoverflow.com/a/25435422
+/**
+ * Pagination: based on http://stackoverflow.com/a/25435422
+ */
 function changePage(page, keyWords, preloaded) {
 	if (page < 1)
 		page = 1;
@@ -36,11 +38,17 @@ function changePage(page, keyWords, preloaded) {
 	showNextButton(page);
 }
 
+/**
+ * Returns count of result pages
+ */
 function numPages() {
 	var stored = parseInt(localStorage.count / records_per_page + 1);
 	return (stored < 4) ? stored : 4;
 }
 
+/**
+ * Querying and filling result table
+ */
 function fillTable(pageNumber, keyWords) {
 	$.ajax({
 		type : "POST",
@@ -71,11 +79,17 @@ function fillTable(pageNumber, keyWords) {
 	});
 };
 
+/**
+ * Updating pagination element
+ */
 function updatePageCount(page) {
 	var page_span = document.getElementById("page");
 	page_span.innerHTML = page + "/" + numPages();
 }
 
+/**
+ * Updating pagination element
+ */
 function showPreviousButton(page) {
 	var btn_prev = document.getElementById("btn_prev");
 	if (page == 1) {
@@ -85,6 +99,9 @@ function showPreviousButton(page) {
 	}
 }
 
+/**
+ * Updating pagination element
+ */
 function showNextButton(page) {
 	var btn_next = document.getElementById("btn_next");
 	if (page == numPages()) {
@@ -94,6 +111,9 @@ function showNextButton(page) {
 	}
 }
 
+/**
+ * Writing table's HTML
+ */
 function setTable(list, start, end) {
 	var content = '';
 	for (var i = start; i < end; i++) {
@@ -112,37 +132,41 @@ function setTable(list, start, end) {
 	return content;
 }
 
+/**
+ * Loading next page from browser's local storage
+ */
 function showPreloadedPage(page) {
-	$(function() {
-		var retrievedObject = localStorage.getItem('preloaded');
-		var list = (JSON.parse(retrievedObject));
-		var content = '';
-		var end = records_per_page * 2;
-		if (end > list.length) {
-			end = list.length;
-		}
-		var newList = new Array();
-		for (var i = records_per_page; i < end; i++) {
-			newList.push(list[i]);
-		}
-		var content = setTable(list, records_per_page, end);
+	var retrievedObject = localStorage.getItem('preloaded');
+	var list = (JSON.parse(retrievedObject));
+	var content = '';
+	var end = records_per_page * 2;
+	if (end > list.length) {
+		end = list.length;
+	}
+	var newList = new Array();
+	for (var i = records_per_page; i < end; i++) {
+		newList.push(list[i]);
+	}
+	var content = setTable(list, records_per_page, end);
 
-		$('#myTableBody').val("");
-		$('#myTableBody').html(content);
+	$('#myTableBody').val("");
+	$('#myTableBody').html(content);
 
-		var nextPage = parseInt(page) + 1;
-		var searchTerm = localStorage.getItem('searchTerm');
-		$.ajax({
-			type : "POST",
-			url : "tabledata/next/" + nextPage + "/" + searchTerm,
-			success : function(data) {
-				newList = newList.concat(data.itemList);
-				localStorage.setItem('preloaded', JSON.stringify(newList));
-			}
-		});
+	var nextPage = parseInt(page) + 1;
+	var searchTerm = localStorage.getItem('searchTerm');
+	$.ajax({
+		type : "POST",
+		url : "tabledata/next/" + nextPage + "/" + searchTerm,
+		success : function(data) {
+			newList = newList.concat(data.itemList);
+			localStorage.setItem('preloaded', JSON.stringify(newList));
+		}
 	});
 };
 
+/**
+ * Loading previous page of results
+ */
 function prevPage() {
 	if (current_page > 1) {
 		current_page--;
@@ -151,6 +175,9 @@ function prevPage() {
 	}
 }
 
+/**
+ * Loading next page of results
+ */
 function nextPage() {
 	if (current_page < numPages()) {
 		current_page++;
@@ -159,6 +186,10 @@ function nextPage() {
 	}
 }
 
+/**
+ * Setting currency dropdown. Due to the Currencylayer's 1000 query limit new
+ * results are loaded only once every 15 minutes
+ */
 function setCurrencyDropDown(currency) {
 	var dateTime = Date.now();
 	var timestamp = Math.floor(dateTime / 1000);
@@ -175,6 +206,9 @@ function setCurrencyDropDown(currency) {
 	}
 }
 
+/**
+ * Loading currencies from Currencylayer's web service
+ */
 function fetchAndStoreCurrencyData(currency) {
 	$.ajax({
 		type : "GET",
@@ -189,11 +223,17 @@ function fetchAndStoreCurrencyData(currency) {
 	});
 }
 
+/**
+ * Loading currencies from local storage
+ */
 function fetchLocalCurrency(retrievedObject, currency) {
 	var data = (JSON.parse(retrievedObject));
 	setDropDown(data, currency);
 }
 
+/**
+ * Setting currency dropdown
+ */
 function setDropDown(data, currency) {
 	var selectEl = $('#currencyDropDown');
 	selectEl.children().remove();
@@ -206,6 +246,9 @@ function setDropDown(data, currency) {
 	}
 }
 
+/**
+ * Recalculating prices based on users choice
+ */
 $('#currencyDropDown').change(function() {
 	var rate = this.value;
 	var currency = $('#currencyDropDown option:selected').text();
@@ -213,6 +256,9 @@ $('#currencyDropDown').change(function() {
 	changeCurrency(currency);
 });
 
+/**
+ * Changing prices one by one
+ */
 function changePrice(rate) {
 	$('tr:not(:has(th))').each(function(i, row) {
 		var $actualrow = $(row);
@@ -222,6 +268,9 @@ function changePrice(rate) {
 	});
 }
 
+/**
+ * Changing all currencies in results table at once
+ */
 function changeCurrency(currency) {
 	$('td.currency').each(function() {
 		this.innerHTML = currency;
