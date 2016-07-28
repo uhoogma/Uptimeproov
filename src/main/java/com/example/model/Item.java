@@ -4,6 +4,7 @@ public class Item {
 
 	private String title;
 	private String asin;
+	private String detailPageURL;
 	private Integer price;
 	private String currency;
 
@@ -23,6 +24,14 @@ public class Item {
 		this.asin = asin;
 	}
 
+	public String getDetailPageURL() {
+		return detailPageURL;
+	}
+
+	public void setDetailPageURL(String detailPageURL) {
+		this.detailPageURL = detailPageURL;
+	}
+	
 	public Integer getPrice() {
 		return price;
 	}
@@ -41,7 +50,7 @@ public class Item {
 
 	@Override
 	public String toString() {
-		return "Item [title=" + title + ", asin=" + asin + ", price=" + price + ", currency=" + currency + "]";
+		return "Item [title=" + title + ", asin=" + asin + ", detailPageURL=" + detailPageURL + ", price=" + price
+				+ ", currency=" + currency + "]";
 	}
-
 }

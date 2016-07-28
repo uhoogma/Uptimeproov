@@ -42,7 +42,7 @@ import org.w3c.dom.Node;
 
 public class ProductService {
 
-	static PropertyLoader propertyLoader = new PropertyLoader();
+	private static PropertyLoader propertyLoader = new PropertyLoader();
 	private static final String AWS_ACCESS_KEY_ID = propertyLoader.getAwsAccessKeyId();
 	private static final String AWS_SECRET_KEY = propertyLoader.getAwsSecretKey();
 	private static final String AWS_ASSOCIATE_TAG = propertyLoader.getAwsAssociateTag();
@@ -69,7 +69,6 @@ public class ProductService {
 				int init = (itemPage == startPage) ? start - ((startPage - 1) * 10) : 0;
 				int last = (itemPage == lastPage) ? start + count - ((lastPage - 1) * 10) : 10;
 				Range range = new Range(init, last);
-				// System.out.println("i "+ i + " init "+ init+ " last "+last);
 				Data data = fetch(helper, itemPage, range, keywords);
 				List<Item> items = data.getItemList();
 				itemCount = data.getItemCount();
@@ -80,42 +79,64 @@ public class ProductService {
 	}
 
 	private Data fetch(SignedRequestsHelper helper, int itemPage, Range range, String keywords) {
-		String requestUrl, requestUrlForPrices;
+		String requestUrl;
 
 		Map<String, String> params = fillParameters(itemPage, keywords);
 
 		requestUrl = helper.sign(params);
 		mandatoryWait();
 
-		List<Item> items = fetchItems(requestUrl, range).getItemList();
-		int count = fetchItems(requestUrl, range).getItemCount();
+		Data fetched = fetchItems(requestUrl, range);
+		List<Item> items = fetched.getItemList();
+		int count = fetched.getItemCount();
 
+		fetchPrices(helper, items);
+		Data data = new Data(count, items);
+		return data;
+	}
+
+	private void fetchPrices(SignedRequestsHelper helper, List<Item> items) {
+		String requestUrlForPrices;
 		String itemList = "";
 		for (Item item : items) {
 			itemList = itemList + item.getAsin() + ",";
 		}
 
-		String queryStringForPrices = "Service=AWSECommerceService&Version=2009-03-31&Operation=ItemLookup&ResponseGroup=Offers&ItemId="
-				+ itemList.substring(0, itemList.length() - 1);
-		requestUrlForPrices = helper.sign(queryStringForPrices);
-		mandatoryWait();
+		if (itemList.length() > 0) {
+			itemList = itemList.substring(0, itemList.length() - 1);
 
-		Map<String, Pair> map = fetchAmount(requestUrlForPrices);
-		for (Item item : items) {
-			Pair pair = map.get(item.getAsin());
-			if (pair != null) {
-				String price = pair.getAmount();
-				String currency = pair.getCurrencyCode();
-				if (price.isEmpty()) {
-					item.setPrice(0);
-				} else {
-					item.setPrice(new Integer(price));
+			String queryStringForPrices = "Service=AWSECommerceService&Version=2009-03-31&Operation=ItemLookup&ResponseGroup=Offers&ItemId="
+					+ itemList;
+			requestUrlForPrices = helper.sign(queryStringForPrices);
+			mandatoryWait();
+
+			Map<String, Pair> map = fetchAmount(requestUrlForPrices);
+			for (Item item : items) {
+				Pair pair = map.get(item.getAsin());
+				if (pair != null) {
+					setPrice(item, pair);
+					setCurrency(item, pair);
 				}
-				item.setCurrency(currency);
 			}
 		}
-		Data data = new Data(count, items);
-		return data;
+	}
+
+	private void setPrice(Item item, Pair pair) {
+		String price = pair.getAmount();
+		if (price.isEmpty()) {
+			item.setPrice(0);
+		} else {
+			item.setPrice(new Integer(price));
+		}
+	}
+
+	private void setCurrency(Item item, Pair pair) {
+		String currency = pair.getCurrencyCode();
+		if (currency.isEmpty()) {
+			item.setCurrency("GBP");
+		} else {
+			item.setCurrency(currency);
+		}
 	}
 
 	private Map<String, String> fillParameters(int itemPage, String keywords) {
@@ -132,7 +153,7 @@ public class ProductService {
 	}
 
 	private Data fetchItems(String requestUrl, Range range) {
-		String title, asin;
+		String title = null, asin = null, detailPageURL = null;
 		List<Item> items = new ArrayList<Item>();
 		String results;
 		try {
@@ -140,24 +161,29 @@ public class ProductService {
 			DocumentBuilder db = dbf.newDocumentBuilder();
 			Document doc = db.parse(requestUrl);
 			results = doc.getElementsByTagName("TotalResults").item(0).getTextContent();
-			for (int i = range.getStart(); i < range.getEnd(); i++) {
+			int itemCount = doc.getElementsByTagName("Item").getLength();
+			for (int i = range.getStart(); i < range.getEnd() && i < itemCount; i++) {
 				Item item = new Item();
 				Node itemNode = doc.getElementsByTagName("Item").item(i);
 				if (itemNode instanceof Element) {
 					Element docElement = (Element) itemNode;
 					asin = docElement.getElementsByTagName("ASIN").item(0).getTextContent();
 					item.setAsin(asin);
+					detailPageURL = docElement.getElementsByTagName("DetailPageURL").item(0).getTextContent();
+					item.setDetailPageURL(detailPageURL);
 				}
 				if (itemNode instanceof Element) {
-					Element docElement2 = (Element) itemNode;
-					Node itemAttributes = docElement2.getElementsByTagName("ItemAttributes").item(0);
+					Element docElement = (Element) itemNode;
+					Node itemAttributes = docElement.getElementsByTagName("ItemAttributes").item(0);
 					if (itemAttributes instanceof Element) {
-						Element docElement3 = (Element) itemAttributes;
-						title = docElement3.getElementsByTagName("Title").item(0).getTextContent();
+						Element docElement2 = (Element) itemAttributes;
+						title = docElement2.getElementsByTagName("Title").item(0).getTextContent();
 						item.setTitle(title);
 					}
 				}
-				items.add(item);
+				if (asin != null && title != null && detailPageURL != null) {
+					items.add(item);
+				}
 			}
 		} catch (Exception e) {
 			throw new RuntimeException(e);
@@ -176,19 +202,19 @@ public class ProductService {
 				Pair pair = new Pair();
 				Node itemNode = doc.getElementsByTagName("Item").item(i);
 				if (itemNode instanceof Element) {
-					Element docElement = (Element) itemNode;
-					asin = docElement.getElementsByTagName("ASIN").item(0).getTextContent();
+					Element level = (Element) itemNode;
+					asin = level.getElementsByTagName("ASIN").item(0).getTextContent();
 				}
 				if (itemNode instanceof Element) {
-					Element docElement2 = (Element) itemNode;
-					Node offerSummary = docElement2.getElementsByTagName("OfferSummary").item(0);
+					Element level = (Element) itemNode;
+					Node offerSummary = level.getElementsByTagName("OfferSummary").item(0);
 					if (offerSummary instanceof Element) {
-						Element docElement3 = (Element) offerSummary;
-						Node lowestNewPrice = docElement3.getElementsByTagName("LowestNewPrice").item(0);
+						Element level2 = (Element) offerSummary;
+						Node lowestNewPrice = level2.getElementsByTagName("LowestNewPrice").item(0);
 						if (lowestNewPrice instanceof Element) {
-							Element docElement4 = (Element) lowestNewPrice;
-							price = docElement4.getElementsByTagName("Amount").item(0).getTextContent();
-							currency = docElement4.getElementsByTagName("CurrencyCode").item(0).getTextContent();
+							Element level3 = (Element) lowestNewPrice;
+							price = level3.getElementsByTagName("Amount").item(0).getTextContent();
+							currency = level3.getElementsByTagName("CurrencyCode").item(0).getTextContent();
 							if (price != null && currency != null) {
 								pair.setAmount(price);
 								pair.setCurrencyCode(currency);

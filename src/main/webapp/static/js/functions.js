@@ -7,6 +7,7 @@ $(document).ready(function() {
 	$("#searchForm").submit(function(event) {
 		event.preventDefault();
 		var searchTerm = $(this).find("input[name='s']").val();
+		var url = window.location.href;
 		var pageNumber = url.substr(url.lastIndexOf("/") + 1);
 		if (pageNumber === "") {
 			pageNumber = "1";
@@ -19,10 +20,6 @@ $(document).ready(function() {
 
 // based on http://stackoverflow.com/a/25435422
 function changePage(page, keyWords, preloaded) {
-	var btn_next = document.getElementById("btn_next");
-	var btn_prev = document.getElementById("btn_prev");
-	var page_span = document.getElementById("page");
-
 	if (page < 1)
 		page = 1;
 	if (page > numPages())
@@ -34,14 +31,62 @@ function changePage(page, keyWords, preloaded) {
 		fillTable(page, keyWords);
 	}
 
-	page_span.innerHTML = page + "/" + numPages();
+	updatePageCount(page);
+	showPreviousButton(page);
+	showNextButton(page);
+}
 
+function numPages() {
+	var stored = parseInt(localStorage.count / records_per_page + 1);
+	return (stored < 4) ? stored : 4;
+}
+
+function fillTable(pageNumber, keyWords) {
+	$.ajax({
+		type : "POST",
+		url : 'tabledata/' + pageNumber + "/" + keyWords,
+		success : function(data) {
+			localStorage.count = data.itemCount;
+			if (data.itemCount > 0) {
+				localStorage
+						.setItem('preloaded', JSON.stringify(data.itemList));
+				var list = data.itemList;
+				var end = records_per_page;
+				if (end > list.length) {
+					end = list.length;
+				}
+				var content = setTable(list, 0, end);
+				$('#notificationArea').css('display', 'none');
+				$('#myTableBody').val("");
+				$('#myTableBody').html(content);
+				updatePageCount(pageNumber);
+				showNextButton(pageNumber);
+			} else {
+				$('#notificationArea').css('display', '');
+				$('#notificationArea').text(
+						"You have 0 results. Try to modify your query.");
+				$('#myTableBody').html("");
+			}
+		}
+	});
+};
+
+function updatePageCount(page) {
+	var page_span = document.getElementById("page");
+	page_span.innerHTML = page + "/" + numPages();
+}
+
+function showPreviousButton(page) {
+	var btn_prev = document.getElementById("btn_prev");
 	if (page == 1) {
 		btn_prev.style.visibility = "hidden";
 	} else {
 		btn_prev.style.visibility = "visible";
 	}
+}
 
+function showNextButton(page) {
+	var btn_next = document.getElementById("btn_next");
 	if (page == numPages()) {
 		btn_next.style.visibility = "hidden";
 	} else {
@@ -49,52 +94,26 @@ function changePage(page, keyWords, preloaded) {
 	}
 }
 
-function numPages() {
-	return parseInt(localStorage.count / records_per_page + 1);
+function setTable(list, start, end) {
+	var content = '';
+	for (var i = start; i < end; i++) {
+		content += '<tr id="' + i + '">';
+		content += '<td><a href="' + list[i].detailPageURL
+				+ '" target="_blank">' + list[i].title + '</a></td>';
+		content += '<td style="display:none;" class="priceHidden">'
+				+ (list[i].price / 100).toFixed(2) + '</td>';
+		content += '<td style="display:none;" class="currencyHidden">'
+				+ list[i].currency + '</td>';
+		content += '<td class="price">' + (list[i].price / 100).toFixed(2)
+				+ '</td>';
+		content += '<td class="currency">' + list[i].currency + '</td>';
+		content += '</tr>';
+	}
+	return content;
 }
-
-function fillTable(pageNumber, keyWords) {
-
-	$
-			.ajax({
-				type : "POST",
-				url : 'tabledata/' + pageNumber + "/" + keyWords,
-				success : function(data) {
-					localStorage.count = data.itemCount;
-					localStorage.setItem('preloaded', JSON
-							.stringify(data.itemList));
-					var list = data.itemList;
-					$(function() {
-						var content = '';
-						var end = records_per_page;
-						if (end > list.length) {
-							end = list.length;
-						}
-						for (var i = 0; i < end; i++) {
-							content += '<tr id="' + i + '">';
-							content += '<td>' + list[i].title + '</td>';
-							content += '<td style="display:none;" class="priceHidden">'
-									+ (list[i].price / 100).toFixed(2)
-									+ '</td>';
-							content += '<td style="display:none;" class="currencyHidden">'
-									+ list[i].currency + '</td>';
-							content += '<td class="price">'
-									+ (list[i].price / 100).toFixed(2)
-									+ '</td>';
-							content += '<td class="currency">'
-									+ list[i].currency + '</td>';
-							content += '</tr>';
-						}
-						$('#myTableBody').val("");
-						$('#myTableBody').html(content);
-					});
-				}
-			});
-};
 
 function showPreloadedPage(page) {
 	$(function() {
-		// Retrieve the object from storage
 		var retrievedObject = localStorage.getItem('preloaded');
 		var list = (JSON.parse(retrievedObject));
 		var content = '';
@@ -105,19 +124,12 @@ function showPreloadedPage(page) {
 		var newList = new Array();
 		for (var i = records_per_page; i < end; i++) {
 			newList.push(list[i]);
-			content += '<tr id="' + i + '">';
-			content += '<td>' + list[i].title + '</td>';
-			content += '<td style="display:none;" class="priceHidden">'
-					+ (list[i].price / 100).toFixed(2) + '</td>';
-			content += '<td style="display:none;" class="currencyHidden">'
-					+ list[i].currency + '</td>';
-			content += '<td class="price">' + (list[i].price / 100).toFixed(2)
-					+ '</td>';
-			content += '<td class="currency">' + list[i].currency + '</td>';
-			content += '</tr>';
 		}
+		var content = setTable(list, records_per_page, end);
+
 		$('#myTableBody').val("");
 		$('#myTableBody').html(content);
+
 		var nextPage = parseInt(page) + 1;
 		var searchTerm = localStorage.getItem('searchTerm');
 		$.ajax({
@@ -147,25 +159,51 @@ function nextPage() {
 	}
 }
 
-function setCurrencyDropDown(current) {
-	$
-			.ajax({
-				type : "GET",
-				url : "tabledata/currency/" + current,
-				success : function(data) {
-					var selectEl = $('#currencyDropDown');
-					selectEl.children().remove();
-					var emptyEl;
-					emptyEl = $('<option/>').attr('value', data[current]).text(
-							current);
-					selectEl.append(emptyEl);
-					for ( var key in data) {
-						var optionEl = $('<option/>').attr('value', data[key])
-								.text(key);
-						selectEl.append(optionEl);
-					}
-				}
-			});
+function setCurrencyDropDown(currency) {
+	var dateTime = Date.now();
+	var timestamp = Math.floor(dateTime / 1000);
+	var storedTimestamp = localStorage.getItem('timestamp');
+	if (storedTimestamp != null && storedTimestamp + 900 < timestamp) {
+		fetchAndStoreCurrencyData(currency);
+	} else {
+		var retrievedObject = localStorage.getItem('currencyData');
+		if (retrievedObject == null) {
+			fetchAndStoreCurrencyData(currency);
+		} else {
+			fetchLocalCurrency(retrievedObject, currency);
+		}
+	}
+}
+
+function fetchAndStoreCurrencyData(currency) {
+	$.ajax({
+		type : "GET",
+		url : "tabledata/currency/" + currency,
+		success : function(data) {
+			localStorage.setItem('currencyData', JSON.stringify(data));
+			var dateTime = Date.now();
+			var timestamp = Math.floor(dateTime / 1000);
+			localStorage.setItem('timestamp', timestamp);
+			setDropDown(data, currency);
+		}
+	});
+}
+
+function fetchLocalCurrency(retrievedObject, currency) {
+	var data = (JSON.parse(retrievedObject));
+	setDropDown(data, currency);
+}
+
+function setDropDown(data, currency) {
+	var selectEl = $('#currencyDropDown');
+	selectEl.children().remove();
+	var emptyEl;
+	emptyEl = $('<option/>').attr('value', data[currency]).text(currency);
+	selectEl.append(emptyEl);
+	for ( var key in data) {
+		var optionEl = $('<option/>').attr('value', data[key]).text(key);
+		selectEl.append(optionEl);
+	}
 }
 
 $('#currencyDropDown').change(function() {

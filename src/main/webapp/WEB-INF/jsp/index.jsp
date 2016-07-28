@@ -15,6 +15,7 @@
 				<input class="inputStyle" type="text" name="s" /><input
 					class="button" type="submit" value="Search">
 			</form>
+			<p id="notificationArea" style="diplay:none;"></p>
 		</div>
 		<div class="content">
 			<table>

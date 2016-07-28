@@ -49,6 +49,14 @@ tr:nth-child(odd) {
     background-color: #ffffff;
 }
 
+.price {
+	text-align: right;
+}
+
+#notificationArea {
+	text-align: center;
+}
+
 .center {
     width: 500px;
     margin: 0 auto;
