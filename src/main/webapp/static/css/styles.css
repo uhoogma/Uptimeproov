@@ -1,4 +1,4 @@
-body{    
+body {    
     background-image: url("/amazonsearch/static/img/cork-wallet.png");
 }
 
@@ -93,6 +93,7 @@ select {
     width: 90%;
     height: 34px;
 }
+
 .form-control{
     width: 206px!important;
 }
